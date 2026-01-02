@@ -30,6 +30,47 @@ const SERVICE_OPTIONS = [
   "Maintenance",
 ];
 
+function buildPreview(proposalName: string, a: any) {
+  const servicesArr: string[] = a.services ?? [];
+  const services =
+    servicesArr.length > 0 ? servicesArr.join(", ") : "—";
+
+  const goal = a.projectGoal?.trim() ? a.projectGoal : "—";
+  const biz = a.businessName?.trim() ? a.businessName : "—";
+  const ind = a.clientIndustry?.trim() ? a.clientIndustry : "—";
+  const timeline = a.timeline?.trim() ? a.timeline : "—";
+
+  return {
+    title: proposalName,
+    sections: [
+      {
+        heading: "Overview",
+        body: `This proposal outlines the scope and approach for ${ind} with the goal of: ${goal}`,
+      },
+      {
+        heading: "About",
+        body: `Prepared by: ${biz}`,
+      },
+      {
+        heading: "Scope of Work",
+        bullets:
+          services === "—"
+            ? ["(No services selected yet)"]
+            : services.split(", ").map((s) => s.trim()),
+      },
+      {
+        heading: "Timeline",
+        body: timeline,
+      },
+      {
+        heading: "Next Steps",
+        bullets: ["Confirm scope and timeline", "Approve proposal", "Schedule kickoff call"],
+      },
+    ],
+  };
+}
+
+
 export default function ProposalBuilderPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -40,6 +81,7 @@ export default function ProposalBuilderPage() {
 
   const [answers, setAnswers] = useState<Answers>({});
   const [stepIndex, setStepIndex] = useState(0);
+const [mode, setMode] = useState<"wizard" | "preview">("wizard");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -171,9 +213,39 @@ export default function ProposalBuilderPage() {
         {saving ? "Saving…" : "Saved"} {msg ? ` • ${msg}` : ""}
       </div>
 
+<div style={{ marginTop: 14, display: "flex", gap: 8 }}>
+  <button
+    onClick={() => setMode("wizard")}
+    style={{
+      padding: "8px 12px",
+      borderRadius: 6,
+      border: "1px solid #111",
+      background: mode === "wizard" ? "#111" : "transparent",
+      color: mode === "wizard" ? "white" : "#111",
+      cursor: "pointer",
+    }}
+  >
+    Wizard
+  </button>
+
+  <button
+    onClick={() => setMode("preview")}
+    style={{
+      padding: "8px 12px",
+      borderRadius: 6,
+      border: "1px solid #111",
+      background: mode === "preview" ? "#111" : "transparent",
+      color: mode === "preview" ? "white" : "#111",
+      cursor: "pointer",
+    }}
+  >
+    Preview
+  </button>
+</div>
+
       {loading ? (
         <p style={{ marginTop: 20 }}>Loading…</p>
-      ) : (
+      ) : mode === "wizard" ? (
         <div style={{ marginTop: 22, border: "1px solid #e5e5e5", borderRadius: 10, padding: 16 }}>
           <div style={{ fontSize: 14, opacity: 0.8 }}>
             Step {stepIndex + 1} of {STEPS.length}
@@ -242,7 +314,33 @@ export default function ProposalBuilderPage() {
             </button>
           </div>
         </div>
-      )}
+      ) : (
+  (() => {
+    const preview = buildPreview(proposalName, answers);
+
+    return (
+      <div style={{ marginTop: 22, border: "1px solid #e5e5e5", borderRadius: 10, padding: 16 }}>
+        <h2 style={{ marginTop: 0 }}>{preview.title}</h2>
+
+        {preview.sections.map((s: any, idx: number) => (
+          <div key={idx} style={{ marginTop: 18 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>{s.heading}</div>
+
+            {s.body ? <div style={{ opacity: 0.9 }}>{s.body}</div> : null}
+
+            {s.bullets ? (
+              <ul style={{ marginTop: 8 }}>
+                {s.bullets.map((b: string, i: number) => (
+                  <li key={i}>{b}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    );
+  })()
+)}
     </div>
   );
 }
