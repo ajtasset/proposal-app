@@ -86,6 +86,8 @@ const [mode, setMode] = useState<"wizard" | "preview">("wizard");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
 
   const currentStep = useMemo(() => STEPS[stepIndex], [stepIndex]);
 
@@ -198,9 +200,50 @@ const [mode, setMode] = useState<"wizard" | "preview">("wizard");
         ← Back
       </button>
 
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginTop: 12 }}>
-        {proposalName}
-      </h1>
+      <div style={{ marginTop: 12 }}>
+  <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 6 }}>Proposal name</div>
+  <div style={{ display: "flex", gap: 8 }}>
+    <input
+      value={proposalName}
+      onChange={(e) => setProposalName(e.target.value)}
+      style={{
+        flex: 1,
+        padding: 10,
+        border: "1px solid #ccc",
+        borderRadius: 6,
+      }}
+    />
+    <button
+      onClick={async () => {
+        setMsg(null);
+        const session = await requireSession();
+        if (!session) return;
+
+        const { error } = await supabase
+          .from("proposals")
+          .update({ name: proposalName })
+          .eq("id", proposalId);
+
+        if (error) setMsg(error.message);
+        else {
+          setMsg("Saved proposal name");
+          setTimeout(() => setMsg(null), 1500);
+        }
+      }}
+      style={{
+        padding: "10px 14px",
+        borderRadius: 6,
+        border: "1px solid #111",
+        background: "#111",
+        color: "white",
+        cursor: "pointer",
+      }}
+    >
+      Save
+    </button>
+  </div>
+</div>
+
 
       <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ flex: 1, height: 8, background: "#eee", borderRadius: 999 }}>
@@ -320,7 +363,90 @@ const [mode, setMode] = useState<"wizard" | "preview">("wizard");
 
     return (
       <div style={{ marginTop: 22, border: "1px solid #e5e5e5", borderRadius: 10, padding: 16 }}>
-        <h2 style={{ marginTop: 0 }}>{preview.title}</h2>
+<h2 style={{ marginTop: 0 }}>{preview.title}</h2>
+
+<div style={{ marginTop: 6, fontSize: 12, opacity: 0.7 }}>
+  Draft • Generated from your answers • Updates automatically
+</div>
+
+<div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+  <button
+    onClick={async () => {
+      const text =
+        preview.title +
+        "\n\n" +
+        preview.sections
+          .map((s: any) => {
+            const body = s.body ? s.body : "";
+            const bullets = s.bullets
+              ? s.bullets.map((b: string) => `- ${b}`).join("\n")
+              : "";
+            return `${s.heading}\n${body}${body && bullets ? "\n" : ""}${bullets}`.trim();
+          })
+          .join("\n\n");
+
+      await navigator.clipboard.writeText(text);
+      setMsg("Copied preview to clipboard");
+      setTimeout(() => setMsg(null), 1500);
+    }}
+    style={{
+      padding: "8px 12px",
+      borderRadius: 6,
+      border: "1px solid #111",
+      background: "transparent",
+      cursor: "pointer",
+    }}
+  >
+    Copy text
+  </button>
+
+  <button
+    onClick={async () => {
+      setMsg(null);
+
+      const token =
+        (crypto as any).randomUUID?.() ??
+        Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+
+      const { error } = await supabase
+        .from("proposals")
+        .update({ share_token: token })
+        .eq("id", proposalId);
+
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+
+      const url = `${window.location.origin}/share/${token}`;
+      setShareUrl(url);
+
+      await navigator.clipboard.writeText(url);
+      setMsg("Share link copied");
+      setTimeout(() => setMsg(null), 1500);
+    }}
+    style={{
+      padding: "8px 12px",
+      borderRadius: 6,
+      border: "1px solid #111",
+      background: "transparent",
+      cursor: "pointer",
+    }}
+  >
+    Create share link
+  </button>
+</div>
+
+{shareUrl ? (
+  <div style={{ marginTop: 10, fontSize: 12 }}>
+    Share URL:{" "}
+    <a href={shareUrl} target="_blank" rel="noreferrer">
+      {shareUrl}
+    </a>
+  </div>
+) : null}
+
+
 
         {preview.sections.map((s: any, idx: number) => (
           <div key={idx} style={{ marginTop: 18 }}>
